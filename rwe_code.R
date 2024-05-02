@@ -116,4 +116,5 @@ stat_data=dataset %>% select(matches('trt|symp|age|weight|height|medical|gaf|gen
 cgis_glm=glm(outcome~.,data = stat_data,family = 'binomial')
 cgis_summ=summary(cgis_glm)
 
-#NAs returned. Collinearity? Requires more inspection
+#Appears that the effect of adt appears to have a significant effect on treatment outcomes compared to others.
+#NAs returned. Collinearity? Requires more inspection.

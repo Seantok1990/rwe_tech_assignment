@@ -10,6 +10,8 @@
 
 library(tidyverse)
 library(ggplot2)
+library(naniar)
+library(lubridate)
 
 #Get working directory of the script
 dir_name=dirname(rstudioapi::getSourceEditorContext()$path)
@@ -44,7 +46,51 @@ billing_data=billing_data %>%  group_by(patient_id) %>% summarize(mean=mean(amou
 full_dataset=full_join(patient_data,billing_data,'patient_id') %>% as.data.frame()
 
 #inspect rows and columns for inconsistent data
-#columns medical_history_tum,medical_history_sud, gender, race have discrepancies
+lapply(full_dataset,function(x) {head(unique(x))})
+lapply(full_dataset,typeof)
+#columns medical_history_hbp, gender, race,resident_status have discrepancies
 
 #Resolve gender
 full_dataset$gender[full_dataset$gender=='m']='Male'
+full_dataset$gender[full_dataset$gender=='f']='Female'
+#Resolve race
+full_dataset$race[full_dataset$race=='chinese']='Chinese'
+full_dataset$race[full_dataset$race=='India']='Indian'
+#Resolve resident_status
+full_dataset$resident_status[full_dataset$resident_status=='Singapore citizen']='Singaporean'
+#Resolve medical_history_hbp
+full_dataset$medical_history_hbp[full_dataset$medical_history_hbp=='No']=0
+full_dataset$medical_history_hbp[full_dataset$medical_history_hbp=='Yes']=1
+full_dataset$medical_history_hbp=as.integer(full_dataset$medical_history_hbp)
+
+#columns medical_history_sud and medical_history_tum have missing values.
+#check number of missing values
+table(is.na(full_dataset$medical_history_tum))
+table(is.na(full_dataset$medical_history_sud))
+
+#test if values are missing at random
+mcar_test(full_dataset)
+#appears to be missing completely at random
+#Propose to remove the rows with missing values since value does not seem to high
+trimmed_dataset=na.omit(full_dataset)
+
+#convert columns to factors
+trimmed_data=trimmed_dataset %>% mutate(across(matches('trt|symp|race|gender|resident'),as.factor))
+
+#Perform feature generation on current features
+#Generate age, duration of stay as well as change in CGIS score at discharge, number of co-occuring symptoms and treatments
+trimmed_dataset= trimmed_dataset %>% mutate(age=floor(as.integer(dmy(.$date_of_admission)-ymd(.$date_of_birth))/365))
+trimmed_dataset= trimmed_dataset %>% mutate(stay_duration=as.integer(dmy(.$date_of_discharge)-dmy(.$date_of_admission)))
+trimmed_dataset= trimmed_dataset %>% mutate(cgis_diff=.$cgis_dis-.$cgis_adm)
+trimmed_dataset$coocur_symp= trimmed_dataset %>% select(matches('symptom')) %>% rowSums()
+trimmed_dataset$coocur_trt= trimmed_dataset %>% select(matches('trt')) %>% rowSums()
+
+#Generate descriptive statistics
+age_summary= trimmed_dataset %>% summarise(mean=mean(age),median=median(age),min=min(age),max=max(age),sd=sd(age))
+symptom_summary=trimmed_dataset %>% select(matches('symptom')) %>% summarise_all(sum)/nrow(trimmed_dataset)*100
+coccur_symptoms=table(trimmed_dataset$coocur_symp)/nrow(trimmed_dataset)*100
+treatment_summary=trimmed_dataset %>% select(matches('trt')) %>% summarise_all(sum)/nrow(trimmed_dataset)*100
+coccur_treat=table(trimmed_dataset$coocur_trt)/nrow(trimmed_dataset)*100
+gender_info=table(trimmed_dataset$gender)/nrow(trimmed_dataset)*100
+race_info=table(trimmed_dataset$race)/nrow(trimmed_dataset)*100
+resident_info=table(trimmed_dataset$resident_status)/nrow(trimmed_dataset)*100

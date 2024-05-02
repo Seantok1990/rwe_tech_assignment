@@ -87,7 +87,7 @@ dataset$coocur_symp= dataset %>% select(matches('symptom')) %>% rowSums()
 dataset$coocur_trt= dataset %>% select(matches('trt')) %>% rowSums()
 
 #Visualize the data for diagnostics
-dataset %>% select(match('weight|age'))%>% select(where(is.numeric)) %>% boxplot()
+dataset %>% select(matches('weight|age|stay'))%>% select(where(is.numeric)) %>% boxplot()
 
 #Generate descriptive statistics
 age_summary= dataset %>% summarise(mean=mean(age),median=median(age),min=min(age),max=max(age),sd=sd(age))

@@ -86,6 +86,9 @@ dataset= dataset %>% mutate(cgis_diff=.$cgis_dis-.$cgis_adm)
 dataset$coocur_symp= dataset %>% select(matches('symptom')) %>% rowSums()
 dataset$coocur_trt= dataset %>% select(matches('trt')) %>% rowSums()
 
+#Visualize the data for diagnostics
+dataset %>% select(match('weight|age'))%>% select(where(is.numeric)) %>% boxplot()
+
 #Generate descriptive statistics
 age_summary= dataset %>% summarise(mean=mean(age),median=median(age),min=min(age),max=max(age),sd=sd(age))
 symptom_summary=dataset %>% select(matches('symptom')) %>% summarise_all(sum)/nrow(dataset)*100
@@ -95,6 +98,7 @@ coccur_treat=table(dataset$coocur_trt)/nrow(dataset)*100
 gender_info=table(dataset$gender)/nrow(dataset)*100
 race_info=table(dataset$race)/nrow(dataset)*100
 resident_info=table(dataset$resident_status)/nrow(dataset)*100
+
 
 #generate distribution graphs
 hist(dataset$age,breaks = seq(20,90,2))
